@@ -7,20 +7,56 @@ import './Board.css';
 export default class Board extends React.Component {
   constructor(props) {
     super(props);
-    const clients = this.getClients();
+    // Every client starts in the backlog, with status forced to 'backlog'
+    const clients = this.getClients().map(client => ({
+      ...client,
+      status: 'backlog',
+    }));
     this.state = {
       clients: {
-        backlog: clients.filter(client => !client.status || client.status === 'backlog'),
-        inProgress: clients.filter(client => client.status && client.status === 'in-progress'),
-        complete: clients.filter(client => client.status && client.status === 'complete'),
+        backlog: clients,
+        inProgress: [],
+        complete: [],
       }
-    }
+    };
     this.swimlanes = {
       backlog: React.createRef(),
       inProgress: React.createRef(),
       complete: React.createRef(),
+    };
+  }
+
+  componentDidMount() {
+    this.drake = Dragula([
+      this.swimlanes.backlog.current,
+      this.swimlanes.inProgress.current,
+      this.swimlanes.complete.current,
+    ]);
+
+    this.drake.on('drop', (el, target) => {
+      let status = 'backlog';
+      let colorClass = 'Card-grey';
+
+      if (target === this.swimlanes.inProgress.current) {
+        status = 'in-progress';
+        colorClass = 'Card-blue';
+      } else if (target === this.swimlanes.complete.current) {
+        status = 'complete';
+        colorClass = 'Card-green';
+      }
+
+      el.classList.remove('Card-grey', 'Card-blue', 'Card-green');
+      el.classList.add(colorClass);
+      el.setAttribute('data-status', status);
+    });
+  }
+
+  componentWillUnmount() {
+    if (this.drake) {
+      this.drake.destroy();
     }
   }
+
   getClients() {
     return [
       ['1','Stark, White and Abbott','Cloned Optimal Architecture', 'in-progress'],
@@ -50,6 +86,7 @@ export default class Board extends React.Component {
       status: companyDetails[3],
     }));
   }
+
   renderSwimlane(name, clients, ref) {
     return (
       <Swimlane name={name} clients={clients} dragulaRef={ref}/>
